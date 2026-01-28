@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calyptor - Multi-LLM AI Orchestrator</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px; }
+        .container { width: 100%; max-width: 1400px; background: white; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); overflow: hidden; display: grid; grid-template-columns: 280px 1fr; grid-template-rows: auto auto 1fr auto auto; height: 90vh; }
+        .sidebar { grid-column: 1; grid-row: 1 / -1; background: linear-gradient(180deg, #667eea 0%, #764ba2 100%); padding: 30px 20px; color: white; overflow-y: auto; }
+        .logo { font-size: 28px; font-weight: bold; letter-spacing: 2px; margin-bottom: 30px; text-align: center; padding-bottom: 20px; border-bottom: 2px solid rgba(255,255,255,0.2); }
+        .nav-btn { width: 100%; background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.3); color: white; padding: 12px 20px; border-radius: 10px; cursor: pointer; font-weight: 600; margin-bottom: 10px; transition: all 0.3s; text-align: left; display: flex; align-items: center; gap: 10px; font-size: 15px; }
+        .nav-btn:hover { background: rgba(255,255,255,0.2); transform: translateX(5px); }
+        .nav-btn.active { background: white; color: #667eea; }
+        .ai-list { margin-top: 30px; }
+        .ai-list-title { font-size: 14px; font-weight: bold; margin-bottom: 15px; opacity: 0.8; }
+        .ai-item { background: rgba(255,255,255,0.1); padding: 12px; border-radius: 8px; margin-bottom: 8px; cursor: pointer; transition: all 0.3s; border: 2px solid transparent; }
+        .ai-item:hover { background: rgba(255,255,255,0.2); border-color: rgba(255,255,255,0.4); }
+        .ai-item-name { font-weight: bold; font-size: 14px; margin-bottom: 3px; }
+        .ai-item-specialty { font-size: 11px; opacity: 0.8; }
+        .user-info-sidebar { margin-top: 30px; padding-top: 20px; border-top: 2px solid rgba(255,255,255,0.2); }
+        .plan-badge { background: rgba(255,255,255,0.2); padding: 10px; border-radius: 8px; font-size: 13px; font-weight: 600; margin-bottom: 10px; text-align: center; }
+        .token-display { background: rgba(255,255,255,0.2); padding: 10px; border-radius: 8px; font-size: 13px; text-align: center; }
+        .header { grid-column: 2; grid-row: 1; background: #f8f9fa; padding: 20px 30px; border-bottom: 1px solid #e0e0e0; display: flex; justify-content: space-between; align-items: center; }
+        .page-title { font-size: 24px; font-weight: bold; color: #333; }
+        .header-right { display: flex; gap: 15px; align-items: center; }
+        .mode-selector { grid-column: 2; grid-row: 2; padding: 15px 30px; background: #f8f9fa; border-bottom: 1px solid #e0e0e0; display: flex; gap: 10px; flex-wrap: wrap; }
+        .mode-btn { padding: 8px 16px; border: 2px solid #e0e0e0; background: white; border-radius: 20px; cursor: pointer; font-size: 13px; font-weight: 600; color: #666; transition: all 0.3s; }
+        .mode-btn:hover { border-color: #667eea; color: #667eea; }
+        .mode-btn.active { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-color: transparent; }
+        .chat-container { grid-column: 2; grid-row: 3; overflow-y: auto; padding: 30px; background: #f5f5f5; }
+        .home-view { max-width: 900px; margin: 0 auto; }
+        .welcome-title { font-size: 36px; color: #667eea; margin-bottom: 20px; font-weight: bold; }
+        .welcome-subtitle { font-size: 18px; color: #666; margin-bottom: 40px; }
+        .ai-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-top: 30px; }
+        .ai-card { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); transition: all 0.3s; cursor: pointer; border: 3px solid transparent; }
+        .ai-card:hover { transform: translateY(-5px); box-shadow: 0 8px 25px rgba(0,0,0,0.15); border-color: #667eea; }
+        .ai-card-icon { font-size: 32px; margin-bottom: 15px; }
+        .ai-card-name { font-weight: bold; color: #667eea; margin-bottom: 8px; font-size: 18px; }
+        .ai-card-specialty { font-size: 13px; color: #999; margin-bottom: 10px; }
+        .ai-card-description { font-size: 12px; color: #666; line-height: 1.5; }
+        .message { margin-bottom: 20px; display: flex; gap: 15px; animation: slideIn 0.3s ease-out; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .message.user { flex-direction: row-reverse; }
+        .avatar { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; flex-shrink: 0; font-size: 14px; }
+        .avatar.user-avatar { background: #667eea; }
+        .avatar.ai-avatar { background: #764ba2; }
+        .message-content { max-width: 70%; padding: 15px 20px; border-radius: 15px; line-height: 1.6; }
+        .message.user .message-content { background: #667eea; color: white; border-bottom-right-radius: 5px; }
+        .message.ai .message-content { background: white; color: #333; border-bottom-left-radius: 5px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .code-space { background: #1e1e1e; color: #d4d4d4; padding: 15px; border-radius: 10px; margin: 10px 0; font-family: 'Courier New', monospace; font-size: 13px; overflow-x: auto; position: relative; }
+        .code-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #444; }
+        .code-lang { color: #4ec9b0; font-weight: bold; }
+        .code-actions { display: flex; gap: 10px; }
+        .code-btn { background: #333; color: white; border: none; padding: 5px 12px; border-radius: 5px; cursor: pointer; font-size: 11px; }
+        .code-btn:hover { background: #444; }
+        .code-content { white-space: pre-wrap; max-height: 400px; overflow-y: auto; }
+        .code-preview { background: white; border: 2px solid #667eea; border-radius: 10px; padding: 15px; margin-top: 10px; }
+        .ai-label { font-size: 11px; color: #999; margin-top: 8px; font-style: italic; display: flex; align-items: center; gap: 5px; }
+        .ai-badge { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: bold; }
+        .disclaimer { grid-column: 2; grid-row: 4; background: #fff3cd; border-top: 2px solid #ffc107; padding: 10px 30px; text-align: center; font-size: 13px; color: #856404; }
+        .input-area { grid-column: 2; grid-row: 5; padding: 20px 30px; background: white; border-top: 1px solid #e0e0e0; }
+        .input-controls { display: flex; gap: 15px; align-items: flex-start; }
+        .input-wrapper { flex: 1; position: relative; }
+        .file-preview-container { margin-bottom: 10px; }
+        .input-field { width: 100%; padding: 15px 20px; border: 2px solid #e0e0e0; border-radius: 25px; font-size: 15px; outline: none; transition: border-color 0.3s; resize: none; font-family: inherit; min-height: 50px; max-height: 150px; }
+        .input-field:focus { border-color: #667eea; }
+        .autocomplete-dropdown { position: absolute; bottom: 100%; left: 0; right: 0; background: white; border: 2px solid #667eea; border-radius: 15px; box-shadow: 0 -5px 20px rgba(0,0,0,0.15); max-height: 300px; overflow-y: auto; margin-bottom: 10px; z-index: 100; }
+        .autocomplete-item { padding: 12px 15px; cursor: pointer; transition: background 0.2s; border-bottom: 1px solid #f0f0f0; }
+        .autocomplete-item:hover, .autocomplete-item.selected { background: #f0f4ff; }
+        .autocomplete-item:last-child { border-bottom: none; }
+        .autocomplete-name { font-weight: bold; color: #667eea; margin-bottom: 3px; }
+        .autocomplete-desc { font-size: 12px; color: #666; }
+        .file-upload-btn { background: #e0e0e0; color: #333; border: none; padding: 15px 20px; border-radius: 25px; cursor: pointer; font-weight: 600; transition: all 0.2s; display: flex; align-items: center; gap: 8px; }
+        .file-upload-btn:hover { background: #d0d0d0; transform: scale(1.05); }
+        .send-btn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 15px 30px; border-radius: 25px; font-size: 15px; font-weight: 600; cursor: pointer; transition: transform 0.2s; white-space: nowrap; height: 50px; }
+        .send-btn:hover { transform: scale(1.05); }
+        .send-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: scale(1); }
+        .cooldown-indicator { background: #ff9800; color: white; padding: 5px 15px; border-radius: 15px; font-size: 12px; font-weight: bold; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
+        .modal.active { display: flex; }
+        .modal-content { background: white; padding: 40px; border-radius: 20px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto; }
+        .modal-header { font-size: 24px; font-weight: bold; margin-bottom: 20px; color: #667eea; }
+        .plan-option { padding: 20px; border: 2px solid #e0e0e0; border-radius: 10px; margin-bottom: 15px; cursor: pointer; transition: all 0.3s; position: relative; }
+        .plan-option:hover { border-color: #667eea; background: #f9f9f9; }
+        .plan-option.current { border-color: #667eea; background: #f0f4ff; }
+        .plan-option.current::after { content: "✓ Current"; position: absolute; top: 10px; right: 10px; background: #667eea; color: white; padding: 4px 10px; border-radius: 15px; font-size: 11px; font-weight: bold; }
+        .plan-name { font-size: 18px; font-weight: bold; margin-bottom: 5px; }
+        .plan-tokens { color: #666; font-size: 14px; }
+        .plan-price { color: #667eea; font-size: 16px; font-weight: bold; margin-top: 8px; }
+        .code-section { margin-top: 30px; padding-top: 20px; border-top: 2px solid #e0e0e0; }
+        .code-input { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; margin-top: 15px; font-size: 14px; font-family: 'Courier New', monospace; }
+        .auth-input { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; margin-bottom: 15px; font-size: 14px; }
+        .auth-input:focus { border-color: #667eea; outline: none; }
+        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; margin-top: 15px; width: 100%; }
+        .btn-secondary { background: #e0e0e0; color: #333; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; margin-top: 10px; width: 100%; }
+        .auth-link { text-align: center; margin-top: 20px; color: #666; font-size: 14px; }
+        .auth-link a { color: #667eea; text-decoration: none; font-weight: 600; cursor: pointer; }
+        .loading { display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: white; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .hidden { display: none !important; }
+        .user-menu { position: relative; }
+        .user-avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; cursor: pointer; font-size: 18px; }
+        .user-dropdown { position: absolute; top: 50px; right: 0; background: white; border-radius: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.15); min-width: 200px; z-index: 1000; }
+        .user-dropdown-item { padding: 12px 20px; cursor: pointer; transition: background 0.2s; border-bottom: 1px solid #f0f0f0; }
+        .user-dropdown-item:hover { background: #f8f9fa; }
+        .user-dropdown-item:last-child { border-bottom: none; }
+        .file-preview { max-width: 200px; max-height: 200px; border-radius: 10px; margin: 10px 0; }
+        .file-info { background: #f0f4ff; padding: 10px 15px; border-radius: 8px; margin: 10px 0; font-size: 13px; color: #667eea; display: inline-flex; align-items: center; gap: 8px; }
+        .file-remove { background: #ff4444; color: white; border: none; padding: 4px 10px; border-radius: 5px; cursor: pointer; font-size: 11px; margin-left: 10px; }
+        @media (max-width: 768px) {
+            .container { grid-template-columns: 1fr; grid-template-rows: auto auto auto 1fr auto auto; height: 100vh; }
+            .sidebar { grid-column: 1; grid-row: 1; }
+            .header { grid-column: 1; grid-row: 2; }
+            .mode-selector { grid-column: 1; grid-row: 3; }
+            .chat-container { grid-column: 1; grid-row: 4; }
+            .disclaimer { grid-column: 1; grid-row: 5; }
+            .input-area { grid-column: 1; grid-row: 6; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="logo">CALYPTOR</div>
+            <button class="nav-btn active" onclick="showHome()">🏠 Home</button>
+            <button class="nav-btn" onclick="showChat()">💬 Chat</button>
+            <div class="ai-list">
+                <div class="ai-list-title">Available AIs</div>
+                <div class="ai-item" onclick="selectAIFromSidebar('claudeopus')"><div class="ai-item-name">👑 Claude Opus</div><div class="ai-item-specialty">Advanced Reasoning</div></div>
+                <div class="ai-item" onclick="selectAIFromSidebar('claude')"><div class="ai-item-name">🤖 Claude</div><div class="ai-item-specialty">Reasoning & Analysis</div></div>
+                <div class="ai-item" onclick="selectAIFromSidebar('gpt4')"><div class="ai-item-name">✨ GPT-4</div><div class="ai-item-specialty">General Intelligence</div></div>
+                <div class="ai-item" onclick="selectAIFromSidebar('gemini')"><div class="ai-item-name">💎 Gemini</div><div class="ai-item-specialty">Multimodal Tasks</div></div>
+                <div class="ai-item" onclick="selectAIFromSidebar('copilot')"><div class="ai-item-name">⚡ Copilot</div><div class="ai-item-specialty">Coding Expert</div></div>
+                <div class="ai-item" onclick="selectAIFromSidebar('perplexity')"><div class="ai-item-name">🔍 Perplexity</div><div class="ai-item-specialty">Research</div></div>
+            </div>
+            <div class="user-info-sidebar">
+                <div class="plan-badge" id="planBadge">Free Plan</div>
+                <div class="token-display" id="tokenDisplay">5,000 tokens</div>
+            </div>
+        </div>
+
+        <!-- Header -->
+        <div class="header">
+            <div class="page-title" id="pageTitle">Welcome to Calyptor</div>
+            <div class="header-right">
+                <div id="cooldownDisplay" class="cooldown-indicator hidden">⏱️ <span id="cooldownTimer">60</span>s</div>
+                <div class="user-menu">
+                    <div class="user-avatar" id="userAvatar" onclick="toggleUserDropdown()">U</div>
+                    <div class="user-dropdown hidden" id="userDropdown">
+                        <div class="user-dropdown-item" onclick="showProfile()">👤 Profile</div>
+                        <div class="user-dropdown-item" onclick="openSettings()">⚙️ Settings</div>
+                        <div class="user-dropdown-item" onclick="logout()">🚪 Logout</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Mode Selector -->
+        <div class="mode-selector">
+            <button class="mode-btn active" id="mode-balanced" onclick="setAIMode('balanced')">⚖️ Balanced</button>
+            <button class="mode-btn" id="mode-thinking" onclick="setAIMode('thinking')">🧠 Thinking</button>
+            <button class="mode-btn" id="mode-fast" onclick="setAIMode('fast')">⚡ Fast</button>
+            <button class="mode-btn" id="mode-image" onclick="setAIMode('image')">🖼️ Image</button>
+            <button class="mode-btn" id="mode-deepsearch" onclick="setAIMode('deepsearch')">🔍 Deep Search</button>
+        </div>
+
+        <!-- Chat Container -->
+        <div class="chat-container" id="chatContainer">
+            <div class="home-view" id="homeView">
+                <div class="welcome-title">Welcome to Calyptor</div>
+                <div class="welcome-subtitle">Your Multi-AI Orchestrator Platform</div>
+                <p style="color: #666; margin-bottom: 30px;">Choose any AI below or let our intelligent router select the best one for your query. Use @mentions to directly select an AI!</p>
+                <div class="ai-grid">
+                    <div class="ai-card" onclick="selectAICard('claudeopus')">
+                        <div class="ai-card-icon">👑</div>
+                        <div class="ai-card-name">Claude Opus</div>
+                        <div class="ai-card-specialty">by Anthropic</div>
+                        <div class="ai-card-description">Most capable model - expert in advanced reasoning, philosophy, and complex analysis.</div>
+                    </div>
+                    <div class="ai-card" onclick="selectAICard('claude')">
+                        <div class="ai-card-icon">🤖</div>
+                        <div class="ai-card-name">Claude</div>
+                        <div class="ai-card-specialty">by Anthropic</div>
+                        <div class="ai-card-description">Deep reasoning and thoughtful problem-solving.</div>
+                    </div>
+                    <div class="ai-card" onclick="selectAICard('gpt4')">
+                        <div class="ai-card-icon">✨</div>
+                        <div class="ai-card-name">GPT-4</div>
+                        <div class="ai-card-specialty">by OpenAI</div>
+                        <div class="ai-card-description">Versatile general-purpose AI with broad knowledge.</div>
+                    </div>
+                    <div class="ai-card" onclick="selectAICard('gemini')">
+                        <div class="ai-card-icon">💎</div>
+                        <div class="ai-card-name">Gemini</div>
+                        <div class="ai-card-specialty">by Google</div>
+                        <div class="ai-card-description">Multimodal AI for visual analysis and data processing.</div>
+                    </div>
+                    <div class="ai-card" onclick="selectAICard('copilot')">
+                        <div class="ai-card-icon">⚡</div>
+                        <div class="ai-card-name">Copilot</div>
+                        <div class="ai-card-specialty">by Microsoft</div>
+                        <div class="ai-card-description">Coding specialist for programming tasks.</div>
+                    </div>
+                    <div class="ai-card" onclick="selectAICard('perplexity')">
+                        <div class="ai-card-icon">🔍</div>
+                        <div class="ai-card-name">Perplexity</div>
+                        <div class="ai-card-specialty">Research AI</div>
+                        <div class="ai-card-description">Real-time web research with cited sources.</div>
+                    </div>
+                </div>
+            </div>
+            <div id="chatView" class="hidden"></div>
+        </div>
+
+        <!-- Disclaimer -->
+        <div class="disclaimer">
+            ⚠️ AI(s) can make mistakes. Double check important responses.
+        </div>
+
+        <!-- Input Area -->
+        <div class="input-area">
+            <div id="filePreviewContainer"></div>
+            <div class="input-controls">
+                <input type="file" id="fileInput" accept="image/*,.pdf,.doc,.docx,.txt" style="display: none;" onchange="handleFileSelect(event)">
+                <button class="file-upload-btn" onclick="document.getElementById('fileInput').click()">📎 Attach</button>
+                <div class="input-wrapper">
+                    <div id="autocompleteDropdown" class="autocomplete-dropdown hidden"></div>
+                    <textarea class="input-field" id="userInput" placeholder="Type your message... (Try @claude)" rows="1"></textarea>
+                </div>
+                <button class="send-btn" id="sendBtn" onclick="sendMessage()">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Authentication Modal -->
+    <div class="modal" id="authModal">
+        <div class="modal-content">
+            <div id="loginForm">
+                <div class="modal-header">Welcome to Calyptor</div>
+                <input type="email" class="auth-input" id="loginEmail" placeholder="Email">
+                <input type="password" class="auth-input" id="loginPassword" placeholder="Password">
+                <button class="btn-primary" onclick="handleLogin()">Login</button>
+                <div class="auth-link">Don't have an account? <a onclick="showSignup()">Sign up</a></div>
+            </div>
+            <div id="signupForm" class="hidden">
+                <div class="modal-header">Create Account</div>
+                <input type="text" class="auth-input" id="signupUsername" placeholder="Username">
+                <input type="email" class="auth-input" id="signupEmail" placeholder="Email">
+                <input type="password" class="auth-input" id="signupPassword" placeholder="Password (min 6 characters)">
+                <input type="password" class="auth-input" id="signupConfirmPassword" placeholder="Confirm Password">
+                <button class="btn-primary" onclick="handleSignup()">Create Account</button>
+                <div class="auth-link">Already have an account? <a onclick="showLogin()">Login</a></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal" id="settingsModal">
+        <div class="modal-content">
+            <div class="modal-header">Plan & Settings</div>
+            <div class="plan-option" id="plan-free" onclick="selectPlan('free')">
+                <div class="plan-name">🆓 Free Plan</div>
+                <div class="plan-tokens">5,000 tokens daily | 50 tokens per message</div>
+                <div class="plan-price">Free</div>
+            </div>
+            <div class="plan-option" id="plan-pro" onclick="showPaymentModal('pro')">
+                <div class="plan-name">⭐ Pro Plan</div>
+                <div class="plan-tokens">100,000 tokens | 30 tokens per message</div>
+                <div class="plan-price">$9.99/month</div>
+            </div>
+            <div class="plan-option" id="plan-max" onclick="showPaymentModal('max')">
+                <div class="plan-name">🚀 Max Plan</div>
+                <div class="plan-tokens">500,000 tokens | 20 tokens per message</div>
+                <div class="plan-price">$29.99/month</div>
+            </div>
+            <div class="plan-option" id="plan-dev" style="opacity: 0.6;">
+                <div class="plan-name">👨‍💻 Dev Plan</div>
+                <div class="plan-tokens">Unlimited tokens | Free messages</div>
+                <div class="plan-price">Code Required</div>
+            </div>
+            <div class="code-section">
+                <div style="font-weight: bold; margin-bottom: 10px;">🔓 Unlock Dev Plan</div>
+                <input type="text" class="code-input" id="devCodeInput" placeholder="Enter developer code..."/>
+                <button class="btn-primary" onclick="redeemDevCode()">Redeem Code</button>
+            </div>
+            <button class="btn-secondary" onclick="closeSettings()">Close</button>
+        </div>
+    </div>
+
+    <!-- Payment Modal -->
+    <div class="modal" id="paymentModal">
+        <div class="modal-content">
+            <div class="modal-header">Complete Payment</div>
+            <div id="paymentPlanInfo"></div>
+            <input type="text" class="auth-input" id="cardNumber" placeholder="Card Number">
+            <input type="text" class="auth-input" id="cardExpiry" placeholder="MM/YY">
+            <input type="text" class="auth-input" id="cardCVC" placeholder="CVC">
+            <input type="text" class="auth-input" id="cardName" placeholder="Cardholder Name">
+            <button class="btn-primary" onclick="processPayment()">Complete Payment</button>
+            <button class="btn-secondary" onclick="closePaymentModal()">Cancel</button>
+        </div>
+    </div>
+
+    <script>
+// ===== AI CONFIGURATION =====
+const AI_MODELS = {
+    claude: { name: "Claude", icon: "🤖", specialty: ["reasoning", "analysis", "writing", "coding", "ethics"], description: "Deep reasoning and thoughtful analysis" },
+    claudeopus: { name: "Claude Opus", icon: "👑", specialty: ["advanced-reasoning", "complex-analysis", "expert-coding", "research", "professional"], description: "Most capable Claude model - expert analysis" },
+    claudehaiku: { name: "Claude Haiku", icon: "⚡", specialty: ["fast", "quick", "instant", "responsive", "efficient"], description: "Fastest Claude model - instant responses" },
+    gpt4: { name: "GPT-4", icon: "✨", specialty: ["general", "creative", "problem-solving", "conversation"], description: "General intelligence and creativity" },
+    gemini: { name: "Gemini", icon: "💎", specialty: ["multimodal", "visual", "data", "research"], description: "Multimodal understanding and analysis" },
+    copilot: { name: "Copilot", icon: "⚡", specialty: ["coding", "programming", "debugging", "development"], description: "Coding and software development" },
+    perplexity: { name: "Perplexity", icon: "🔍", specialty: ["search", "research", "facts", "current-events"], description: "Web research and factual information" },
+    mistral: { name: "Mistral", icon: "🌪️", specialty: ["fast", "efficient", "quick-responses"], description: "Fast and efficient responses" },
+    llama: { name: "Llama", icon: "🦙", specialty: ["open-source", "customizable", "local", "privacy"], description: "Open-source AI with strong reasoning" },
+    chatgpt: { name: "ChatGPT", icon: "💬", specialty: ["conversation", "chat", "friendly", "accessible"], description: "Conversational AI assistant" },
+    bard: { name: "Bard", icon: "🎭", specialty: ["creative", "storytelling", "content", "writing"], description: "Creative content generation" },
+    cohere: { name: "Cohere", icon: "🔗", specialty: ["business", "enterprise", "classification", "embeddings"], description: "Enterprise AI solutions" },
+    openai: { name: "GPT-3.5", icon: "🚀", specialty: ["quick", "affordable", "efficient", "balanced"], description: "Fast and cost-effective AI" },
+    deepseek: { name: "DeepSeek", icon: "🔬", specialty: ["science", "technical", "math", "engineering"], description: "Technical and scientific reasoning" },
+    grok: { name: "Grok", icon: "🎪", specialty: ["humor", "witty", "casual", "fun"], description: "AI with personality and humor" },
+    titan: { name: "Amazon Titan", icon: "🏔️", specialty: ["aws", "cloud", "scalable", "reliable"], description: "Enterprise-grade cloud AI" },
+    jurassic: { name: "AI21 Jurassic", icon: "🦖", specialty: ["language", "long-form", "coherent", "contextual"], description: "Advanced language understanding" },
+    calyptor: { name: "Calyptor AI", icon: "🌊", specialty: ["fallback", "general", "assistant", "helper"], description: "Built-in AI assistant (fallback)" }
+};
+
+const PLANS = {
+    free: { name: "Free Plan", tokens: 5000, costPerMessage: 50, resetDaily: true },
+    pro: { name: "Pro Plan", tokens: 100000, costPerMessage: 30, resetDaily: false },
+    max: { name: "Max Plan", tokens: 500000, costPerMessage: 20, resetDaily: false },
+    dev: { name: "Dev Plan", tokens: Infinity, costPerMessage: 0, resetDaily: false }
+};
+
+const DEV_CODES = ["pW3$hT8&Qn6!bR2@Xy9#fL5^kM1", "Gm4^Sx9!cT2&Vb7#Pq1$Hn8@wR5", "Zq7@vN2%tF5!yB9#rK1^mS4&xD0"];
+
+let userState = { 
+    plan: 'free', tokens: 5000, usedCodes: [], lastReset: null,
+    isLoggedIn: false, email: null, username: null, userId: null,
+    aiMode: 'balanced', currentChatId: null, chats: [],
+    lastRequestTime: 0, cooldownUntil: 0
+};
+
+let appState = { 
+    currentView: 'home', selectedAI: null, autocompleteIndex: 0, 
+    mentionQuery: '', uploadedFile: null, filePreview: null
+};
+
+// ===== RATE LIMITING =====
+function checkRateLimit() {
+    const now = Date.now();
+    const timeSinceLastRequest = now - userState.lastRequestTime;
+    
+    // Check if in cooldown
+    if (now < userState.cooldownUntil) {
+        const remainingTime = Math.ceil((userState.cooldownUntil - now) / 1000);
+        return { allowed: false, remainingTime };
+    }
+    
+    // Require 60 seconds between requests for free users
+    if (userState.plan === 'free' && timeSinceLastRequest < 60000) {
+        const remainingTime = Math.ceil((60000 - timeSinceLastRequest) / 1000);
+        return { allowed: false, remainingTime };
+    }
+    
+    return { allowed: true };
+}
+
+function startCooldown(seconds) {
+    userState.cooldownUntil = Date.now() + (seconds * 1000);
+    userState.lastRequestTime = Date.now();
+    saveUserState();
+    
+    // Show cooldown indicator
+    const cooldownDisplay = document.getElementById('cooldownDisplay');
+    const cooldownTimer = document.getElementById('cooldownTimer');
+    cooldownDisplay.classList.remove('hidden');
+    
+    const interval = setInterval(() => {
+        const remaining = Math.ceil((userState.cooldownUntil - Date.now()) / 1000);
+        if (remaining <= 0) {
+            cooldownDisplay.classList.add('hidden');
+            clearInterval(interval);
+        } else {
+            cooldownTimer.textContent = remaining;
+        }
+    }, 1000);
+}
+
+function init() {
+    const saved = localStorage.getItem('calyptorUser');
+    if (saved) userState = JSON.parse(saved);
+    if (!userState.isLoggedIn) document.getElementById('authModal').classList.add('active');
+    checkDailyReset();
+    updateUI();
+    const input = document.getElementById('userInput');
+    input.addEventListener('input', handleInput);
+    input.addEventListener('keydown', handleKeyDown);
+}
+
+function checkDailyReset() {
+    if (userState.plan !== 'free' || !PLANS[userState.plan].resetDaily) return;
+    const now = new Date(), today = now.toDateString();
+    if (userState.lastReset !== today) {
+        userState.tokens = 5000;
+        userState.lastReset = today;
+        saveUserState();
+        if (userState.lastReset) setTimeout(() => showNotification('🎉 Tokens reset to 5,000!', 'success'), 500);
+    }
+}
+
+function saveUserState() { localStorage.setItem('calyptorUser', JSON.stringify(userState)); }
+
+function updateUI() {
+    document.getElementById('planBadge').textContent = PLANS[userState.plan].name;
+    document.getElementById('tokenDisplay').textContent = userState.plan === 'dev' ? '∞ Unlimited' : `${userState.tokens.toLocaleString()} tokens`;
+    if (userState.isLoggedIn) document.getElementById('userAvatar').textContent = userState.username ? userState.username[0].toUpperCase() : '?';
+    ['free','pro','max','dev'].forEach(p => {
+        const e = document.getElementById(`plan-${p}`);
+        if (e) e.classList.toggle('current', userState.plan === p);
+    });
+    if (userState.aiMode) {
+        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+        const m = document.getElementById('mode-' + userState.aiMode);
+        if (m) m.classList.add('active');
+    }
+}
+
+function showHome() {
+    appState.currentView = 'home';
+    document.getElementById('homeView').classList.remove('hidden');
+    document.getElementById('chatView').classList.add('hidden');
+    document.getElementById('pageTitle').textContent = 'Welcome to Calyptor';
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.nav-btn')[0].classList.add('active');
+}
+
+function showChat() {
+    appState.currentView = 'chat';
+    document.getElementById('homeView').classList.add('hidden');
+    document.getElementById('chatView').classList.remove('hidden');
+    document.getElementById('pageTitle').textContent = 'Chat';
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.nav-btn')[1].classList.add('active');
+}
+
+function selectAICard(k) { appState.selectedAI = k; showChat(); document.getElementById('userInput').focus(); }
+function selectAIFromSidebar(k) {
+    appState.selectedAI = k; showChat();
+    const i = document.getElementById('userInput');
+    i.value = `@${AI_MODELS[k].name.toLowerCase()} `;
+    i.focus(); autoResize();
+}
+
+function handleInput(e) {
+    autoResize();
+    const v = e.target.value, p = e.target.selectionStart, t = v.substring(0, p), m = t.match(/@(\w*)$/);
+    if (m) { appState.mentionQuery = m[1].toLowerCase(); showAutocomplete(); }
+    else hideAutocomplete();
+}
+
+function autoResize() {
+    const i = document.getElementById('userInput');
+    i.style.height = 'auto';
+    i.style.height = Math.min(i.scrollHeight, 150) + 'px';
+}
+
+function showAutocomplete() {
+    const d = document.getElementById('autocompleteDropdown'), q = appState.mentionQuery;
+    const m = Object.entries(AI_MODELS).filter(([k, a]) => a.name.toLowerCase().includes(q) || k.includes(q));
+    if (!m.length) { hideAutocomplete(); return; }
+    d.innerHTML = m.map(([k, a], i) => `<div class="autocomplete-item ${i===0?'selected':''}" data-key="${k}" onclick="selectFromAutocomplete('${k}')"><div class="autocomplete-name">${a.icon} ${a.name}</div><div class="autocomplete-desc">${a.description}</div></div>`).join('');
+    d.classList.remove('hidden');
+    appState.autocompleteIndex = 0;
+}
+
+function hideAutocomplete() { document.getElementById('autocompleteDropdown').classList.add('hidden'); }
+
+function selectFromAutocomplete(k) {
+    const i = document.getElementById('userInput'), v = i.value, p = i.selectionStart, t = v.substring(0, p), s = t.lastIndexOf('@');
+    i.value = v.substring(0, s) + `@${AI_MODELS[k].name.toLowerCase()} ` + v.substring(p);
+    i.focus(); appState.selectedAI = k; hideAutocomplete(); autoResize();
+}
+
+function handleKeyDown(e) {
+    const d = document.getElementById('autocompleteDropdown');
+    if (!d.classList.contains('hidden')) {
+        const items = d.querySelectorAll('.autocomplete-item');
+        if (e.key === 'ArrowDown') { 
+            e.preventDefault(); 
+            appState.autocompleteIndex = (appState.autocompleteIndex + 1) % items.length; 
+            updateAutocompleteSelection(items); 
+        }
+        else if (e.key === 'ArrowUp') { 
+            e.preventDefault(); 
+            appState.autocompleteIndex = (appState.autocompleteIndex - 1 + items.length) % items.length; 
+            updateAutocompleteSelection(items); 
+        }
+        else if (e.key === 'Enter' && !e.shiftKey) { 
+            e.preventDefault(); 
+            const selectedItem = items[appState.autocompleteIndex];
+            if (selectedItem) {
+                selectFromAutocomplete(selectedItem.dataset.key); 
+            }
+        }
+        else if (e.key === 'Escape') hideAutocomplete();
+    } else if (e.key === 'Enter' && !e.shiftKey) { 
+        e.preventDefault(); 
+        sendMessage(); 
+    }
+}
+
+function updateAutocompleteSelection(items) {
+    items.forEach((it, i) => it.classList.toggle('selected', i === appState.autocompleteIndex));
+    items[appState.autocompleteIndex].scrollIntoView({ block: 'nearest' });
+}
+
+function routeToAI(q) {
+    const l = q.toLowerCase(), m = q.match(/@(\w+)/);
+    if (m) {
+        const ai = Object.entries(AI_MODELS).find(([k, a]) => a.name.toLowerCase() === m[1].toLowerCase() || k === m[1].toLowerCase());
+        if (ai) return ai[0];
+    }
+    if (appState.selectedAI) return appState.selectedAI;
+    const complex = q.length > 150;
+    const phil = l.match(/\b(philosophy|philosophical|meaning of|existence|consciousness|reality|truth|knowledge)\b/);
+    const strat = l.match(/\b(strategy|strategic|framework|methodology|comprehensive analysis|system design)\b/);
+    const research = l.match(/\b(research|comprehensive|thorough analysis|investigate deeply|academic)\b/);
+    const adv = l.match(/\b(advanced|sophisticated|complex|nuanced|multi-dimensional|in-depth)\b/);
+    const longcode = l.match(/\b(build|create|develop|implement)\b/) && l.match(/\b(application|system|platform|website|game|app|full|complete|entire)\b/) && q.length > 80;
+    if (phil || strat || research || adv || complex || longcode) return 'claudeopus';
+    if (l.match(/\b(code|program|debug|function|script|algorithm|python|javascript|html|css|roblox|lua)\b/)) return 'copilot';
+    if (l.match(/\b(research|search|find|what is|who is|when did|current|news|latest)\b/)) return 'perplexity';
+    if (l.match(/\b(image|picture|visual|diagram|chart|graph|photo)\b/)) return 'gemini';
+    if (l.match(/\b(analyze|explain|reasoning|ethics|thoughtful|consider)\b/)) return 'claude';
+    if (l.match(/\b(story|creative|write|poem|novel|script|narrative|fiction)\b/)) return 'bard';
+    if (l.match(/\b(math|science|physics|chemistry|engineering|calculate|formula)\b/)) return 'deepseek';
+    if (l.match(/\b(joke|funny|humor|laugh|fun|witty)\b/)) return 'grok';
+    if (l.match(/\b(business|enterprise|company|professional|work)\b/)) return 'cohere';
+    if (l.match(/\b(chat|talk|conversation|discuss|friendly)\b/)) return 'chatgpt';
+    if (l.match(/\b(open source|privacy|local|offline)\b/)) return 'llama';
+    if (q.length < 50) return 'mistral';
+    if (q.length > 50 && q.length < 150) return 'claude';
+    return 'calyptor';
+}
+
+function generateResponse(ai, q) {
+    const clean = q.replace(/@\w+\s*/g, '');
+    const r = {
+        claude: `🤖 Claude: Analyzing "${clean}"\n\nThoughtful analysis...\n[Simulated response]`,
+        claudeopus: `👑 Claude Opus: Advanced analysis of "${clean}"\n\nDeep reasoning...\n[Simulated response]`,
+        claudehaiku: `⚡ Claude Haiku: Quick answer to "${clean}"\n\nFast response!\n[Simulated]`,
+        gpt4: `✨ GPT-4: "${clean}"\n\nComprehensive help...\n[Simulated]`,
+        gemini: `💎 Gemini: Analyzing "${clean}"\n\nMultimodal analysis...\n[Simulated]`,
+        copilot: generateCopilotCode(clean),
+        perplexity: `🔍 Perplexity: Research on "${clean}"\n\nWeb sources...\n[Simulated]`,
+        mistral: `🌪️ Mistral: Fast answer "${clean}"\n\nQuick!\n[Simulated]`,
+        llama: `🦙 Llama: "${clean}"\n\nOpen-source answer...\n[Simulated]`,
+        chatgpt: `💬 ChatGPT: "${clean}"\n\nFriendly chat...\n[Simulated]`,
+        bard: `🎭 Bard: Creating for "${clean}"\n\nCreative response...\n[Simulated]`,
+        cohere: `🔗 Cohere: Business analysis "${clean}"\n\nEnterprise insights...\n[Simulated]`,
+        openai: `🚀 GPT-3.5: "${clean}"\n\nQuick efficient answer...\n[Simulated]`,
+        deepseek: `🔬 DeepSeek: Technical "${clean}"\n\nScientific analysis...\n[Simulated]`,
+        grok: `🎪 Grok: Fun take on "${clean}"\n\nAlright, here's the deal...\n[Simulated]`,
+        titan: `🏔️ Titan: Cloud solution for "${clean}"\n\nEnterprise-grade...\n[Simulated]`,
+        jurassic: `🦖 Jurassic: Language analysis "${clean}"\n\nAdvanced NLP...\n[Simulated]`,
+        calyptor: `🌊 Calyptor AI: "${clean}"\n\nEnsemble response combining all AI strengths!\n\n✓ Deep reasoning (Claude)\n✓ Speed (Mistral)\n✓ Creativity (Bard)\n✓ Technical depth (DeepSeek)\n✓ And more!\n\nHybrid intelligence at your service!`
+    };
+    return r[ai] || `${AI_MODELS[ai].name}: ${clean}`;
+}
+
+// Generate code with Code Space
+function generateCopilotCode(query) {
+    const code = `// Solution for: ${query}
+function solution() {
+    // Implementation here
+    const result = processData();
+    return result;
+}
+
+function processData() {
+    // Process logic
+    return "Processed result";
+}
+
+// Example usage:
+const output = solution();
+console.log(output);`;
+
+    return `⚡ Copilot - Code Solution\n\n${createCodeSpace(code, 'javascript', query)}`;
+}
+
+function createCodeSpace(code, language, query) {
+    const lineCount = code.split('\n').length;
+    const codeId = 'code_' + Date.now();
+    
+    // If code is 75+ lines, use Code Space, otherwise use inline
+    if (lineCount >= 75) {
+        return `<CODE_SPACE id="${codeId}" lang="${language}" lines="${lineCount}">
+Query: "${query}"
+[Long code - ${lineCount} lines - See Code Space below]
+</CODE_SPACE>`;
+    } else {
+        return code;
+    }
+}
+
+async function sendMessage() {
+    if (!checkAuth()) return;
+    
+    // Check rate limit
+    const rateCheck = checkRateLimit();
+    if (!rateCheck.allowed) {
+        showNotification(`⏱️ Please wait ${rateCheck.remainingTime} seconds before sending another message.`, 'error');
+        return;
+    }
+    
+    const i = document.getElementById('userInput'), q = i.value.trim(), hasFile = appState.uploadedFile;
+    if (!q && !hasFile) return;
+    const cost = PLANS[userState.plan].costPerMessage;
+    if (userState.plan !== 'dev' && userState.tokens < cost) { showTokenDepletedModal(); return; }
+    if (userState.plan !== 'dev') { userState.tokens -= cost; saveUserState(); updateUI(); }
+    if (appState.currentView === 'home') showChat();
+    let msg = q;
+    if (hasFile) msg += `\n\n[📎 ${appState.uploadedFile.name}]`;
+    i.value = ''; i.style.height = 'auto'; hideAutocomplete();
+    addMessage(msg, 'user', null);
+    if (hasFile) removeFile();
+    const btn = document.getElementById('sendBtn');
+    btn.disabled = true; btn.innerHTML = '<span class="loading"></span>';
+    
+    // Start cooldown for free users
+    if (userState.plan === 'free') {
+        startCooldown(60);
+    }
+    
+    let ai = routeToAI(q);
+    if (userState.aiMode === 'thinking') ai = 'claudeopus';
+    else if (userState.aiMode === 'fast') ai = q.length > 100 ? 'mistral' : 'claudehaiku';
+    else if (userState.aiMode === 'image') ai = 'gemini';
+    else if (userState.aiMode === 'deepsearch') ai = 'perplexity';
+    if (hasFile && appState.uploadedFile.type.startsWith('image/')) ai = 'gemini';
+    await new Promise(r => setTimeout(r, 1000 + Math.random() * 1000));
+    let res = generateResponse(ai, q);
+    if (hasFile && appState.uploadedFile.type.startsWith('image/')) res = `📷 Image Analysis\n\n` + res;
+    addMessage(res, 'ai', ai);
+    appState.selectedAI = null; btn.disabled = false; btn.textContent = 'Send'; i.focus();
+}
+
+function addMessage(c, s, ai = null) {
+    const v = document.getElementById('chatView'), d = document.createElement('div');
+    d.className = `message ${s}`;
+    const av = document.createElement('div');
+    av.className = `avatar ${s}-avatar`;
+    av.textContent = s === 'user' ? 'U' : AI_MODELS[ai].icon;
+    const mc = document.createElement('div');
+    mc.className = 'message-content';
+    
+    // Check for code spaces
+    if (c.includes('<CODE_SPACE')) {
+        mc.innerHTML = processCodeSpaces(c);
+    } else {
+        mc.innerHTML = c.replace(/\n/g, '<br>');
+    }
+    
+    if (ai) {
+        const lbl = document.createElement('div');
+        lbl.className = 'ai-label';
+        lbl.innerHTML = `<span class="ai-badge">${AI_MODELS[ai].name}</span> ${AI_MODELS[ai].description}`;
+        mc.appendChild(lbl);
+    }
+    d.appendChild(av); d.appendChild(mc); v.appendChild(d);
+    document.getElementById('chatContainer').scrollTop = 999999;
+}
+
+function processCodeSpaces(content) {
+    const codeSpaceRegex = /<CODE_SPACE id="([^"]+)" lang="([^"]+)" lines="([^"]+)">([^<]*)<\/CODE_SPACE>/g;
+    return content.replace(codeSpaceRegex, (match, id, lang, lines, query) => {
+        return `<div class="code-space">
+            <div class="code-header">
+                <span class="code-lang">${lang.toUpperCase()}</span>
+                <div class="code-actions">
+                    <button class="code-btn" onclick="copyCode('${id}')">📋 Copy</button>
+                    <button class="code-btn" onclick="toggleCodeView('${id}')">👁️ View</button>
+                </div>
+            </div>
+            <div class="code-content" id="${id}" style="display:none;">
+// Code will be loaded here when View is clicked
+// ${lines} lines total
+Query: ${query}
+            </div>
+            <div class="code-preview" id="${id}_preview" style="display:none;">
+                <iframe style="width:100%;height:400px;border:none;"></iframe>
+            </div>
+        </div>`;
+    });
+}
+
+function copyCode(codeId) {
+    const codeElement = document.getElementById(codeId);
+    if (codeElement) {
+        navigator.clipboard.writeText(codeElement.textContent);
+        showNotification('✅ Code copied to clipboard!', 'success');
+    }
+}
+
+function toggleCodeView(codeId) {
+    const codeContent = document.getElementById(codeId);
+    const codePreview = document.getElementById(codeId + '_preview');
+    
+    if (codeContent.style.display === 'none') {
+        codeContent.style.display = 'block';
+        codePreview.style.display = 'none';
+    } else {
+        codeContent.style.display = 'none';
+        // For HTML, show preview
+        if (codeContent.textContent.includes('<html') || codeContent.textContent.includes('<!DOCTYPE')) {
+            codePreview.style.display = 'block';
+            const iframe = codePreview.querySelector('iframe');
+            iframe.srcdoc = codeContent.textContent;
+        }
+    }
+}
+
+function showTokenDepletedModal() {
+    const m = document.createElement('div');
+    m.className = 'modal active';
+    m.innerHTML = `<div class="modal-content" style="text-align:center"><div style="font-size:60px;margin-bottom:20px">😔</div><div class="modal-header">Tokens Depleted!</div><p>Come back tomorrow for 5,000 new tokens!</p><button class="btn-primary" onclick="closeTokenModal()">Got it!</button><button class="btn-secondary" onclick="closeTokenModal();openSettings()">Upgrade</button></div>`;
+    document.body.appendChild(m);
+    window.currentTokenModal = m;
+}
+
+function closeTokenModal() { if (window.currentTokenModal) { window.currentTokenModal.remove(); window.currentTokenModal = null; } }
+
+function showNotification(m, t = 'info') {
+    const n = document.createElement('div');
+    n.style.cssText = `position:fixed;top:20px;right:20px;background:${t==='success'?'#4caf50':t==='error'?'#f44336':'#2196F3'};color:white;padding:15px 25px;border-radius:10px;box-shadow:0 4px 15px rgba(0,0,0,0.2);z-index:10000;font-weight:600`;
+    n.textContent = m;
+    document.body.appendChild(n);
+    setTimeout(() => n.remove(), 3000);
+}
+
+function openSettings() { updateUI(); document.getElementById('settingsModal').classList.add('active'); }
+function closeSettings() { document.getElementById('settingsModal').classList.remove('active'); }
+
+function selectPlan(p) {
+    if (p === 'dev') { alert('💡 Dev Plan needs a code!'); document.getElementById('devCodeInput').focus(); return; }
+    if (confirm(`Switch to ${PLANS[p].name}?`)) {
+        userState.plan = p; userState.tokens = PLANS[p].tokens; saveUserState(); updateUI();
+        alert(`✅ Switched to ${PLANS[p].name}!`);
+    }
+}
+
+function redeemDevCode() {
+    const i = document.getElementById('devCodeInput'), c = i.value.trim();
+    if (!c) { alert('⚠️ Enter a code'); return; }
+    if (userState.usedCodes.includes(c)) { alert('❌ Code already used'); i.value = ''; return; }
+    if (DEV_CODES.includes(c)) {
+        userState.plan = 'dev'; userState.tokens = Infinity; userState.usedCodes.push(c);
+        saveUserState(); updateUI(); alert('🎉 Dev Plan activated!'); closeSettings(); i.value = '';
+    } else { alert('❌ Invalid code'); i.value = ''; }
+}
+
+function checkAuth() {
+    if (!userState.isLoggedIn) { document.getElementById('authModal').classList.add('active'); return false; }
+    return true;
+}
+
+function showLogin() {
+    document.getElementById('loginForm').classList.remove('hidden');
+    document.getElementById('signupForm').classList.add('hidden');
+}
+
+function showSignup() {
+    document.getElementById('loginForm').classList.add('hidden');
+    document.getElementById('signupForm').classList.remove('hidden');
+}
+
+function handleLogin() {
+    const e = document.getElementById('loginEmail').value.trim(), p = document.getElementById('loginPassword').value;
+    if (!e || !p) { showNotification('❌ Fill all fields', 'error'); return; }
+    const users = JSON.parse(localStorage.getItem('calyptorUsers') || '{}');
+    if (users[e] && users[e].password === p) {
+        userState.isLoggedIn = true; userState.email = e; userState.username = users[e].username;
+        userState.userId = users[e].userId; userState.plan = users[e].plan || 'free';
+        userState.tokens = users[e].tokens || 5000;
+        saveUserState(); document.getElementById('authModal').classList.remove('active'); updateUI();
+        showNotification('✅ Welcome back, ' + userState.username + '!', 'success');
+        document.getElementById('loginEmail').value = ''; document.getElementById('loginPassword').value = '';
+    } else showNotification('❌ Invalid credentials', 'error');
+}
+
+function handleSignup() {
+    const u = document.getElementById('signupUsername').value.trim();
+    const e = document.getElementById('signupEmail').value.trim();
+    const p = document.getElementById('signupPassword').value;
+    const cp = document.getElementById('signupConfirmPassword').value;
+    if (!u || !e || !p || !cp) { showNotification('❌ Fill all fields', 'error'); return; }
+    if (p !== cp) { showNotification('❌ Passwords don\'t match', 'error'); return; }
+    if (p.length < 6) { showNotification('❌ Password min 6 chars', 'error'); return; }
+    const users = JSON.parse(localStorage.getItem('calyptorUsers') || '{}');
+    if (users[e]) { showNotification('❌ Email exists', 'error'); return; }
+    const uid = 'user_' + Date.now() + Math.random().toString(36).substr(2, 9);
+    users[e] = { username: u, password: p, userId: uid, plan: 'free', tokens: 5000, createdAt: new Date().toISOString() };
+    localStorage.setItem('calyptorUsers', JSON.stringify(users));
+    userState.isLoggedIn = true; userState.email = e; userState.username = u; userState.userId = uid; userState.plan = 'free'; userState.tokens = 5000;
+    saveUserState(); document.getElementById('authModal').classList.remove('active'); updateUI();
+    showNotification('✅ Account created! Welcome, ' + u + '!', 'success');
+    document.getElementById('signupUsername').value = ''; document.getElementById('signupEmail').value = '';
+    document.getElementById('signupPassword').value = ''; document.getElementById('signupConfirmPassword').value = '';
+}
+
+function logout() {
+    if (confirm('Logout?')) {
+        userState.isLoggedIn = false; userState.email = null; userState.username = null; userState.userId = null;
+        saveUserState(); showNotification('👋 Logged out', 'info'); setTimeout(() => location.reload(), 1000);
+    }
+    hideUserDropdown();
+}
+
+function showProfile() {
+    alert(`👤 Profile\n\nUsername: ${userState.username}\nEmail: ${userState.email}\nPlan: ${PLANS[userState.plan].name}\nTokens: ${userState.tokens.toLocaleString()}`);
+    hideUserDropdown();
+}
+
+function toggleUserDropdown() { document.getElementById('userDropdown').classList.toggle('hidden'); }
+function hideUserDropdown() { document.getElementById('userDropdown').classList.add('hidden'); }
+
+document.addEventListener('click', e => { if (!e.target.closest('.user-menu')) hideUserDropdown(); });
+
+let selectedPlanForPayment = null;
+
+function showPaymentModal(p) {
+    if (!checkAuth()) return;
+    selectedPlanForPayment = p;
+    const info = PLANS[p], prices = { pro: 9.99, max: 29.99 };
+    document.getElementById('paymentPlanInfo').innerHTML = `<div style="background:#f0f4ff;padding:20px;border-radius:10px;margin-bottom:20px"><div style="font-size:20px;font-weight:bold;color:#667eea;margin-bottom:10px">${info.name}</div><div style="font-size:14px;color:#666;margin-bottom:10px">${info.tokens.toLocaleString()} tokens | ${info.costPerMessage} tokens/msg</div><div style="font-size:24px;font-weight:bold;color:#333">$${prices[p]}/month</div></div>`;
+    closeSettings(); document.getElementById('paymentModal').classList.add('active');
+}
+
+function closePaymentModal() {
+    document.getElementById('paymentModal').classList.remove('active'); selectedPlanForPayment = null;
+    document.getElementById('cardNumber').value = ''; document.getElementById('cardExpiry').value = '';
+    document.getElementById('cardCVC').value = ''; document.getElementById('cardName').value = '';
+}
+
+function processPayment() {
+    const cn = document.getElementById('cardNumber').value.trim();
+    const ce = document.getElementById('cardExpiry').value.trim();
+    const cc = document.getElementById('cardCVC').value.trim();
+    const na = document.getElementById('cardName').value.trim();
+    if (!cn || !ce || !cc || !na) { showNotification('❌ Fill all fields', 'error'); return; }
+    if (cn.length < 13) { showNotification('❌ Invalid card', 'error'); return; }
+    showNotification('💳 Processing...', 'info');
+    setTimeout(() => {
+        userState.plan = selectedPlanForPayment; userState.tokens = PLANS[selectedPlanForPayment].tokens;
+        const users = JSON.parse(localStorage.getItem('calyptorUsers') || '{}');
+        if (users[userState.email]) { users[userState.email].plan = selectedPlanForPayment; users[userState.email].tokens = userState.tokens; localStorage.setItem('calyptorUsers', JSON.stringify(users)); }
+        saveUserState(); updateUI(); closePaymentModal();
+        showNotification('✅ Payment successful! Upgraded to ' + PLANS[selectedPlanForPayment].name, 'success');
+    }, 2000);
+}
+
+function setAIMode(m) {
+    userState.aiMode = m; saveUserState();
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('mode-' + m).classList.add('active');
+    const names = { balanced: '⚖️ Balanced', thinking: '🧠 Thinking', fast: '⚡ Fast', image: '🖼️ Image', deepsearch: '🔍 Deep Search' };
+    showNotification('Switched to ' + names[m], 'info');
+}
+
+function handleFileSelect(e) {
+    const f = e.target.files[0];
+    if (!f) return;
+    if (f.size > 10 * 1024 * 1024) { showNotification('❌ File too large! Max 10MB', 'error'); return; }
+    appState.uploadedFile = f;
+    const pc = document.getElementById('filePreviewContainer');
+    pc.innerHTML = '';
+    if (f.type.startsWith('image/')) {
+        const r = new FileReader();
+        r.onload = x => {
+            pc.innerHTML = `<div class="file-info"><img src="${x.target.result}" class="file-preview" /><span>📷 ${f.name}</span><button class="file-remove" onclick="removeFile()">✕</button></div>`;
+            appState.filePreview = x.target.result;
+        };
+        r.readAsDataURL(f);
+    } else {
+        const icon = f.type.includes('pdf') ? '📄' : f.type.includes('doc') ? '📝' : f.type.includes('text') ? '📃' : '📎';
+        pc.innerHTML = `<div class="file-info"><span>${icon} ${f.name} (${(f.size / 1024).toFixed(2)} KB)</span><button class="file-remove" onclick="removeFile()">✕</button></div>`;
+    }
+    showNotification('📎 File attached!', 'success');
+}
+
+function removeFile() {
+    appState.uploadedFile = null;
+    appState.filePreview = null;
+    document.getElementById('filePreviewContainer').innerHTML = '';
+    document.getElementById('fileInput').value = '';
+    showNotification('🗑️ File removed', 'info');
+}
+
+window.onload = init;
+    </script>
+</body>
+</html>
